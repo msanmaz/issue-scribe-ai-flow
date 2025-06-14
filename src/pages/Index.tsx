@@ -72,21 +72,29 @@ const Index = () => {
   };
 
   const mockTemplateData = {
-    title: "Chat widget send button not working - TypeError in ChatWidget.js",
     description: "Users are unable to send messages through the chat widget due to a JavaScript error. The send button appears non-functional and generates a TypeError in the browser console.",
+    appId: "abc123",
+    errorMessage: "TypeError: Cannot read property 'send' of undefined at ChatWidget.js:245",
+    affectedScope: "Customer-specific issue reported by Sarah Johnson",
+    timeline: "First occurred on 2024-01-15T10:30:00Z. Happening every time user tries to send a message. First time experiencing this issue.",
+    device: "Desktop",
+    browser: "Chrome 120.0.6099.129",
+    operatingSystem: "Not specified",
+    screenshotUrls: [],
+    videoUrl: "",
+    userLink: "https://app.intercom.io/a/apps/abc123/users/12345",
+    conversationLink: "https://app.intercom.io/a/apps/abc123/inbox/conversation/67890",
+    affectedPageLink: "",
     reproductionSteps: [
       "Navigate to website with chat widget",
-      "Open chat widget",
+      "Open chat widget", 
       "Type a message in the input field",
       "Click the send button",
       "Observe that message is not sent",
       "Check browser console for errors"
     ],
-    expectedBehavior: "Message should be sent successfully when user clicks the send button",
-    actualBehavior: "Send button does not work and TypeError is thrown in console",
-    appId: "abc123",
-    environment: "Production",
-    browserInfo: "Chrome 120.0.6099.129"
+    website: "",
+    loginCredentials: ""
   };
 
   const handleAnalyzeConversation = async (url: string) => {
