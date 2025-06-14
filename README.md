@@ -1,73 +1,194 @@
-# Welcome to your Lovable project
+# Issue Scribe AI Flow
 
-## Project info
+An AI-powered application that analyzes Intercom conversations to automatically detect bugs and create GitHub issues directly in your repository.
 
-**URL**: https://lovable.dev/projects/b5a95c61-07ce-4e57-b4c5-33288cbc7a99
+## Features
 
-## How can I edit this code?
+- **Intelligent Bug Detection**: Uses OpenAI's GPT-4 to analyze conversation patterns and detect legitimate bugs
+- **Direct GitHub Integration**: Creates actual GitHub issues in your repository with proper formatting
+- **Intercom Integration**: Fetches conversation data directly from Intercom's API
+- **Enhanced Context**: Captures screenshots, reproduction steps, and technical details
+- **Real-time Analysis**: Provides confidence scores and reasoning for bug detection
 
-There are several ways of editing your application.
+## Prerequisites
 
-**Use Lovable**
+Before running this application, you'll need:
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/b5a95c61-07ce-4e57-b4c5-33288cbc7a99) and start prompting.
+1. **Intercom Access Token**: API token from your Intercom workspace
+2. **OpenAI API Key**: API key from OpenAI Platform
+3. **GitHub Personal Access Token**: Token with repository access to create issues
+4. **GitHub Repository**: Repository where issues will be created
+5. **Node.js & npm**: [Install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
-Changes made via Lovable will be committed automatically to this repo.
+## Environment Setup
 
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+### 1. Clone the Repository
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
 git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
 cd <YOUR_PROJECT_NAME>
+npm install
+```
 
-# Step 3: Install the necessary dependencies.
-npm i
+### 2. Create Environment File
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+Create a `.env` file in the project root:
+
+```env
+# Intercom API Configuration
+VITE_INTERCOM_ACCESS_TOKEN=your_intercom_access_token_here
+
+# OpenAI API Configuration
+VITE_OPENAI_API_KEY=your_openai_api_key_here
+
+# GitHub API Configuration
+VITE_GITHUB_TOKEN=your_github_personal_access_token_here
+VITE_GITHUB_OWNER=your_github_username_or_org
+VITE_GITHUB_REPO=your_repository_name
+```
+
+### 3. Get Your API Keys
+
+#### Intercom Access Token
+1. Go to your Intercom workspace
+2. Navigate to Settings > Developers > Developer Hub
+3. Create or select your app
+4. Go to Configure > Access Token
+5. Copy the token and add it to your `.env` file
+
+#### OpenAI API Key
+1. Visit [OpenAI Platform](https://platform.openai.com/api-keys)
+2. Create a new secret key
+3. Copy the key and add it to your `.env` file
+
+#### GitHub Personal Access Token
+1. Go to GitHub Settings > Developer settings > Personal access tokens
+2. Click "Generate new token (classic)"
+3. Grant the **repo** scope (full repository access)
+4. Copy the token and add it to your `.env` file
+
+#### GitHub Repository Settings
+1. Set `VITE_GITHUB_OWNER` to your GitHub username or organization name
+2. Set `VITE_GITHUB_REPO` to the exact repository name where you want issues created
+
+### 4. Start the Development Server
+
+```sh
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The application will start at `http://localhost:8080`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Usage
 
-**Use GitHub Codespaces**
+1. **Input Conversation URL**: Paste an Intercom conversation URL
+2. **Automatic Analysis**: The AI analyzes the conversation for bug indicators
+3. **Bug Detection**: Get confidence scores and reasoning for bug classification
+4. **Issue Creation**: If a bug is detected, fill out the GitHub issue template
+5. **Direct GitHub Integration**: Click "Create GitHub Issue" to create the actual issue in your repository
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Workflow
 
-## What technologies are used for this project?
+1. **Analysis Phase**: AI determines if the conversation contains a legitimate bug
+2. **Template Phase**: If it's a bug, you can edit the issue template with additional details
+3. **Creation Phase**: The application creates a real GitHub issue in your repository
+4. **Success**: You get a direct link to the created issue with issue number and details
 
-This project is built with:
+## API Integration
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+The application integrates with:
 
-## How can I deploy this project?
+- **Intercom API**: Fetches conversation data, messages, and metadata
+- **OpenAI API**: Performs AI analysis for bug detection
+- **GitHub API**: Creates actual issues in your GitHub repository
 
-Simply open [Lovable](https://lovable.dev/projects/b5a95c61-07ce-4e57-b4c5-33288cbc7a99) and click on Share -> Publish.
+## Technologies Used
 
-## Can I connect a custom domain to my Lovable project?
+- **Frontend**: React, TypeScript, Tailwind CSS
+- **UI Components**: shadcn/ui
+- **State Management**: TanStack React Query
+- **Build Tool**: Vite
+- **HTTP Client**: Axios
 
-Yes, you can!
+## Project Structure
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+```
+src/
+├── components/          # React components
+├── hooks/              # React Query hooks
+├── services/           # API services (Intercom, OpenAI, GitHub)
+├── types/              # TypeScript type definitions
+└── pages/              # Application pages
+```
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## Development
+
+### Local Development
+
+```sh
+npm run dev
+```
+
+### Build for Production
+
+```sh
+npm run build
+```
+
+### Type Checking
+
+```sh
+npm run type-check
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **CORS Errors**: The development server includes a proxy for Intercom API
+2. **Invalid API Keys**: Check your environment variables and API key format
+3. **Rate Limits**: Both APIs have rate limits - wait before retrying
+4. **GitHub Permissions**: Ensure your token has the "repo" scope for the target repository
+
+### Environment Variables
+
+If you see a configuration error screen, ensure:
+- Your `.env` file is in the project root
+- All required environment variables are set
+- You've restarted the development server after adding variables
+- Your GitHub token has the correct permissions
+
+### GitHub Issues
+
+- Verify your repository exists and is accessible
+- Check that your GitHub token has the "repo" scope
+- Ensure the repository name and owner are spelled correctly
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## License
+
+This project is built with [Lovable](https://lovable.dev) and uses modern web technologies.
+
+---
+
+## Lovable Project Info
+
+**URL**: https://lovable.dev/projects/b5a95c61-07ce-4e57-b4c5-33288cbc7a99
+
+### Editing Options
+
+- **Use Lovable**: Visit the project URL and start prompting
+- **Local Development**: Clone and edit locally
+- **GitHub**: Edit files directly in the repository
+- **Codespaces**: Use GitHub Codespaces for cloud development
+
+### Deployment
+
+Open [Lovable](https://lovable.dev/projects/b5a95c61-07ce-4e57-b4c5-33288cbc7a99) and click Share → Publish.

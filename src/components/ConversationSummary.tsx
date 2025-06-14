@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Clock, User, Mail, Building } from "lucide-react";
+import { Clock, User, Mail, Building, Hash, Calendar, RefreshCw } from "lucide-react";
 
 interface Message {
   id: string;
@@ -23,6 +23,8 @@ interface ConversationSummaryProps {
   status: 'open' | 'closed' | 'pending';
   messages: Message[];
   createdAt: string;
+  conversationId?: string;
+  updatedAt?: string;
 }
 
 const ConversationSummary = ({
@@ -31,7 +33,9 @@ const ConversationSummary = ({
   priority,
   status,
   messages,
-  createdAt
+  createdAt,
+  conversationId,
+  updatedAt
 }: ConversationSummaryProps) => {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -48,6 +52,14 @@ const ConversationSummary = ({
       case 'pending': return 'bg-blue-500 text-white';
       default: return 'bg-muted text-muted-foreground';
     }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
   };
 
   return (
@@ -67,37 +79,61 @@ const ConversationSummary = ({
           </div>
           <div className="flex items-center gap-1 text-sm text-muted-foreground">
             <Clock className="w-4 h-4" />
-            {new Date(createdAt).toLocaleDateString()}
+            {formatDate(createdAt)}
           </div>
         </div>
       </CardHeader>
       
       <CardContent className="space-y-6">
-        {/* Customer Information */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/30 rounded-lg">
-          <div className="flex items-center gap-2">
-            <User className="w-4 h-4 text-muted-foreground" />
-            <div>
-              <p className="text-sm font-medium">{customer.name}</p>
-              <p className="text-xs text-muted-foreground">Customer</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Mail className="w-4 h-4 text-muted-foreground" />
-            <div>
-              <p className="text-sm font-medium">{customer.email}</p>
-              <p className="text-xs text-muted-foreground">Email</p>
-            </div>
-          </div>
-          {customer.company && (
-            <div className="flex items-center gap-2">
-              <Building className="w-4 h-4 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">{customer.company}</p>
-                <p className="text-xs text-muted-foreground">Company</p>
+        {/* Customer Information and Conversation Details */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4 bg-muted/30 rounded-lg">
+          {/* Customer Information */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              Customer Information
+            </h3>
+            <div className="space-y-2">
+              <div className="flex items-start gap-2">
+                <span className="text-sm font-medium text-muted-foreground min-w-[50px]">Name:</span>
+                <span className="text-sm font-medium text-foreground">{customer.name}</span>
               </div>
+              <div className="flex items-start gap-2">
+                <span className="text-sm font-medium text-muted-foreground min-w-[50px]">Email:</span>
+                <span className="text-sm font-medium text-foreground">{customer.email}</span>
+              </div>
+              {customer.company && (
+                <div className="flex items-start gap-2">
+                  <span className="text-sm font-medium text-muted-foreground min-w-[50px]">Company:</span>
+                  <span className="text-sm font-medium text-foreground">{customer.company}</span>
+                </div>
+              )}
             </div>
-          )}
+          </div>
+
+          {/* Conversation Details */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              Conversation Details
+            </h3>
+            <div className="space-y-2">
+              {conversationId && (
+                <div className="flex items-start gap-2">
+                  <span className="text-sm font-medium text-muted-foreground min-w-[60px]">ID:</span>
+                  <span className="text-sm font-mono text-foreground">{conversationId}</span>
+                </div>
+              )}
+              <div className="flex items-start gap-2">
+                <span className="text-sm font-medium text-muted-foreground min-w-[60px]">Created:</span>
+                <span className="text-sm font-medium text-foreground">{formatDate(createdAt)}</span>
+              </div>
+              {updatedAt && (
+                <div className="flex items-start gap-2">
+                  <span className="text-sm font-medium text-muted-foreground min-w-[60px]">Updated:</span>
+                  <span className="text-sm font-medium text-foreground">{formatDate(updatedAt)}</span>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         <Separator />

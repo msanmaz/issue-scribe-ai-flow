@@ -1,7 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, CheckCircle, Zap, TrendingUp } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { AlertTriangle, CheckCircle, Zap, TrendingUp, FileText, Search, Users } from "lucide-react";
+import type { BugDetectionResult } from "@/services/llmApi";
 
 interface BugAnalysisProps {
   isBug: boolean;
@@ -9,6 +11,7 @@ interface BugAnalysisProps {
   reasoning: string;
   detectedPatterns: string[];
   isAnalyzing?: boolean;
+  bugDetectionResult?: BugDetectionResult;
 }
 
 const BugAnalysis = ({ 
@@ -16,7 +19,8 @@ const BugAnalysis = ({
   confidence, 
   reasoning, 
   detectedPatterns, 
-  isAnalyzing 
+  isAnalyzing,
+  bugDetectionResult
 }: BugAnalysisProps) => {
   if (isAnalyzing) {
     return (
@@ -65,7 +69,7 @@ const BugAnalysis = ({
           <div className="flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-muted-foreground" />
             <Badge variant={isBug ? "destructive" : "default"} className="font-semibold">
-              {confidence}% Confidence
+              {Math.round(confidence * 100)}% Confidence
             </Badge>
           </div>
         </div>
@@ -79,28 +83,71 @@ const BugAnalysis = ({
         </CardDescription>
       </CardHeader>
       
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-6">
         {/* Confidence Bar */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
             <span className="font-medium">Analysis Confidence</span>
-            <span className="text-muted-foreground">{confidence}%</span>
+            <span className="text-muted-foreground">{Math.round(confidence * 100)}%</span>
           </div>
           <Progress 
-            value={confidence} 
+            value={confidence * 100} 
             className={`w-full ${
               isBug ? '[&>div]:bg-orange-500' : '[&>div]:bg-green-500'
             }`}
           />
         </div>
 
-        {/* Reasoning */}
+        {/* AI Reasoning */}
         <div className="space-y-2">
           <h4 className="font-medium text-sm">AI Reasoning</h4>
           <div className="text-sm text-foreground bg-background/60 rounded-lg p-3 border">
             {reasoning}
           </div>
         </div>
+
+        {/* AI Bug Detection Results - Only show if we have detailed results */}
+        {isBug && bugDetectionResult && (
+          <>
+            <Separator />
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
+                <Search className="w-5 h-5" />
+                AI Bug Detection Results
+              </h3>
+              
+              {/* Initial Analysis */}
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  Initial Analysis:
+                </h4>
+                <div className="text-sm text-foreground bg-background/60 rounded-lg p-3 border">
+                  {bugDetectionResult.initialAnalysis.description}
+                </div>
+              </div>
+
+              {/* Key Indicators */}
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm">Key Indicators:</h4>
+                <div className="text-sm text-foreground">
+                  {bugDetectionResult.keyIndicators.join(', ')}
+                </div>
+              </div>
+
+              {/* Agent Escalation */}
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  Agent Escalation:
+                </h4>
+                <div className="text-sm text-foreground">
+                  {bugDetectionResult.agentEscalation}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Detected Patterns */}
         {detectedPatterns.length > 0 && (

@@ -6,8 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Copy, Check, FileText, Upload, X } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Copy, Check, FileText, Upload, X, Search, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import type { BugDetectionResult } from "@/services/llmApi";
 
 interface IssueTemplateProps {
   initialTemplate: {
@@ -28,10 +30,11 @@ interface IssueTemplateProps {
     website: string;
     loginCredentials: string;
   };
-  onGenerate: (template: any) => void;
+  onGenerate: (issueData: { title: string; body: string; labels: string[] }) => void;
+  bugDetectionResult?: BugDetectionResult;
 }
 
-const IssueTemplate = ({ initialTemplate, onGenerate }: IssueTemplateProps) => {
+const IssueTemplate = ({ initialTemplate, onGenerate, bugDetectionResult }: IssueTemplateProps) => {
   const [template, setTemplate] = useState(initialTemplate);
   const [screenshots, setScreenshots] = useState<File[]>([]);
   const [copied, setCopied] = useState(false);
@@ -442,11 +445,24 @@ ${template.loginCredentials}`;
 
         <div className="flex justify-end mt-6">
           <Button 
-            onClick={() => onGenerate({ ...template, screenshots })}
+            onClick={() => {
+              const issueTitle = bugDetectionResult?.initialAnalysis.title || 
+                              template.description.split('\n')[0].substring(0, 100) || 
+                              'Issue from Intercom conversation';
+              const labels = ['intercom', 'bug', 'customer-support'];
+              if (bugDetectionResult?.severity) {
+                labels.push(`severity-${bugDetectionResult.severity}`);
+              }
+              onGenerate({ 
+                title: issueTitle, 
+                body: generateMarkdown(), 
+                labels 
+              });
+            }}
             className="px-6"
             disabled={!template.description.trim() || !template.appId.trim()}
           >
-            Generate GitHub Issue
+            Create GitHub Issue
           </Button>
         </div>
       </CardContent>
