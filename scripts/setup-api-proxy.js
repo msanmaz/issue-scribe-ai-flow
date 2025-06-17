@@ -8,7 +8,7 @@ console.log('🚀 Setting up Vercel API Proxy...\n');
 
 // Environment file templates
 const envDevelopment = `# Development environment - uses local Vite proxy
-VITE_API_BASE_URL=/api
+VITE_API_BASE_URL=/api s
 
 # Add your development API keys here
 # VITE_DEV_API_KEY=your_development_api_key
