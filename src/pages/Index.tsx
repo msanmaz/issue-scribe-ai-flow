@@ -7,6 +7,7 @@ import IssueTemplate from "@/components/IssueTemplate";
 import EnvironmentSetup from "@/components/EnvironmentSetup";
 import { useToast } from "@/hooks/use-toast";
 import { useConversation, useBugDetection, useCreateGitHubIssue, useConversationQueryStatus, useConversationCache } from "@/hooks/conversation";
+import { useQueryClient } from '@tanstack/react-query';
 import { validateApiConfiguration } from "@/services/llmApi";
 import type { GitHubIssueData, CreatedGitHubIssue } from "@/services/githubApi";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +27,7 @@ const Index = () => {
   const { toast } = useToast();
 
   // TanStack Query hooks
+  const queryClient = useQueryClient();
   const conversationQuery = useConversation(conversationId);
   const bugDetectionQuery = useBugDetection(conversationQuery.data || null);
   const createIssueMutation = useCreateGitHubIssue();
@@ -73,14 +75,18 @@ const Index = () => {
       return;
     }
 
-    // Check if we have cached data for this conversation
-    const tempCacheStatus = {
-      conversationCached: !!conversationQuery.data && conversationId === id,
-      bugDetectionCached: !!bugDetectionQuery.data && conversationId === id,
-    };
+    // Set the new conversation ID first so we can check cache for this specific ID
+    const previousId = conversationId;
+    setCurrentUrl(url);
+    setConversationId(id);
 
-    if (tempCacheStatus.conversationCached && tempCacheStatus.bugDetectionCached && conversationId === id) {
-      console.log('[Cache] Using cached data for conversation', id);
+    // Check if we have cached data for this specific conversation ID
+    // Note: We need to check cache after setting the ID, but before setting step
+    const conversationCache = queryClient.getQueryData(['conversation', id]);
+    const bugDetectionCache = queryClient.getQueryData(['bugDetection', id]);
+
+    if (conversationCache && bugDetectionCache) {
+      console.log('[Cache] Found complete cached data for conversation', id);
       toast({
         title: "Using Cached Data",
         description: "Loading conversation from cache for faster performance.",
@@ -88,7 +94,8 @@ const Index = () => {
       });
       
       // If we have all cached data, go directly to the appropriate step
-      if (bugDetectionQuery.data?.isBug) {
+      const bugData = bugDetectionCache as any;
+      if (bugData?.isBug) {
         setCurrentStep('enhancement');
       } else {
         setCurrentStep('not-a-bug');

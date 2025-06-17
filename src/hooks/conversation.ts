@@ -126,10 +126,23 @@ export const usePrefetchConversation = () => {
 export const useConversationCache = (conversationId: string | null) => {
   const queryClient = useQueryClient();
   
-  if (!conversationId) return { hasCache: false, hasValid: false };
+  if (!conversationId) return { 
+    hasCache: false, 
+    hasValid: false, 
+    conversationCached: false,
+    bugDetectionCached: false 
+  };
   
   const conversationCache = queryClient.getQueryData(queryKeys.conversation(conversationId));
   const bugDetectionCache = queryClient.getQueryData(queryKeys.bugDetection(conversationId));
+  
+  // Add some debugging
+  console.log(`[Cache Check] Conversation ${conversationId}:`, {
+    conversationCached: !!conversationCache,
+    bugDetectionCached: !!bugDetectionCache,
+    conversationData: conversationCache ? 'Available' : 'Not Available',
+    bugDetectionData: bugDetectionCache ? 'Available' : 'Not Available',
+  });
   
   return {
     hasCache: !!conversationCache || !!bugDetectionCache,
