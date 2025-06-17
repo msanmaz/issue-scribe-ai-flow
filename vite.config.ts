@@ -21,6 +21,16 @@ export default defineConfig(({ mode }) => ({
           'Content-Type': 'application/json',
         },
       },
+      // Generic proxy for external APIs during development
+      '/api/external': {
+        target: 'https://your-external-api.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/external/, ''),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      },
     },
   },
   plugins: [

@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "@vercel/node@18"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/external/(.*)",
+      "destination": "https://your-external-api.com/$1"
+    }
+  ]
+} 

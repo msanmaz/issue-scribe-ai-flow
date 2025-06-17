@@ -8,7 +8,8 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "setup:api-proxy": "node scripts/setup-api-proxy.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
