@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 console.log('🚀 Setting up Vercel API Proxy...\n');
 
 // Environment file templates
-const envDevelopment = `# Development environment - uses local Vite proxy
+const envDevelopment = `# Development envir22onment - uses local Vite proxy
 VITE_API_BASE_URL=/api s
 
 # Add your development API keys here
