@@ -5,17 +5,22 @@ import ConversationSummary from "@/components/ConversationSummary";
 import BugAnalysis from "@/components/BugAnalysis";
 import IssueTemplate from "@/components/IssueTemplate";
 import EnvironmentSetup from "@/components/EnvironmentSetup";
+import MCPConfiguration from "@/components/MCPConfiguration";
+import AIDuplicateAnalysis from "@/components/AIDuplicateAnalysis";
 import { useToast } from "@/hooks/use-toast";
 import { useConversation, useBugDetection, useCreateGitHubIssue, useConversationQueryStatus, useConversationCache } from "@/hooks/conversation";
+import { useFrontendMCP } from "@/hooks/useFrontendMCP";
 import { useQueryClient } from '@tanstack/react-query';
 import { validateApiConfiguration } from "@/services/llmApi";
-import type { GitHubIssueData, CreatedGitHubIssue } from "@/services/githubApi";
+import type {  CreatedGitHubIssue } from "@/services/githubApi";
+import type { MCPConfig, MCPAnalysisResult } from "@/types/mcp";
+import type { EnhancedIssueContext } from "@/types/conversation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, AlertTriangle, RefreshCw, ExternalLink, Zap } from "lucide-react";
+import { CheckCircle, RefreshCw, ExternalLink, Zap, Settings, Brain } from "lucide-react";
 
-type AppStep = 'input' | 'conversation-ready' | 'not-a-bug' | 'enhancement' | 'complete';
+type AppStep = 'mcp-config' | 'input' | 'conversation-ready' | 'not-a-bug' | 'enhancement' | 'ai-analysis' | 'complete';
 
 const Index = () => {
   const [currentStep, setCurrentStep] = useState<AppStep>('input');
@@ -24,6 +29,9 @@ const Index = () => {
   const [apiConfigValid, setApiConfigValid] = useState(true);
   const [missingVars, setMissingVars] = useState<string[]>([]);
   const [createdIssue, setCreatedIssue] = useState<CreatedGitHubIssue | null>(null);
+  const [mcpAnalysisResult, setMCPAnalysisResult] = useState<MCPAnalysisResult | null>(null);
+  const [enhancedContext, setEnhancedContext] = useState<EnhancedIssueContext | null>(null);
+  const [showMCPConfig, setShowMCPConfig] = useState(false);
   const { toast } = useToast();
 
   // TanStack Query hooks
@@ -33,6 +41,9 @@ const Index = () => {
   const createIssueMutation = useCreateGitHubIssue();
   const queryStatus = useConversationQueryStatus(conversationId);
   const cacheStatus = useConversationCache(conversationId);
+  
+  // MCP hooks
+  const mcp = useFrontendMCP();
 
   // Check API configuration on mount
   useEffect(() => {
@@ -132,7 +143,7 @@ const Index = () => {
 
   // Handle successful GitHub issue creation
   useEffect(() => {
-    if (createIssueMutation.isSuccess && currentStep === 'enhancement') {
+    if (createIssueMutation.isSuccess && (currentStep === 'enhancement' || currentStep === 'ai-analysis')) {
       setCurrentStep('complete');
       setCreatedIssue(createIssueMutation.data);
       toast({
@@ -141,6 +152,113 @@ const Index = () => {
       });
     }
   }, [createIssueMutation.isSuccess, currentStep, toast, createIssueMutation.data]);
+
+  // Handle MCP configuration
+  const handleMCPConfigured = async (config: MCPConfig) => {
+    try {
+      await mcp.initialize(config);
+      setShowMCPConfig(false);
+      toast({
+        title: "MCP Configured!",
+        description: "AI duplicate detection is now ready to use.",
+      });
+    } catch (error) {
+      console.error('Failed to initialize MCP:', error);
+    }
+  };
+
+  // Generate initial template helper
+  const generateInitialTemplate = (conversation: any, bugDetection: any, context: EnhancedIssueContext) => {
+    return {
+      title: bugDetection.initialAnalysis.title,
+      body: `## Description of the issue
+${bugDetection.initialAnalysis.description}
+
+## Issue details
+
+**APP ID:**
+${context.appId}
+
+**1. What is the error message?**
+${context.errorMessages || 'N/A'}
+
+**2. Is the issue affecting all teammates or just the customer who reported the issue?**
+Customer: ${conversation.customerName}
+
+**3. When did the issue first occur?**
+First occurred: ${conversation.createdAt}
+
+**4. What device was the customer using?**
+${context.browserInfo || 'Not specified'}
+
+**5. Which browser (and version) or app version were they using?**
+${context.browserInfo || 'Not specified'}
+
+**6. What operating system and version were they on?**
+Not specified
+
+## Evidence
+**Screenshots URLs:**
+${context.screenshots.map(s => s.url).join('\n') || 'No screenshots provided in conversation'}
+
+## Links
+Link to the affected conversation:
+https://app.intercom.io/inbox/conversation/${conversation.id}
+
+## Steps to reproduce
+${context.additionalSteps || 'Please refer to the conversation for reproduction steps.'}
+
+## Technical Details
+${context.technicalDetails || 'N/A'}`,
+      labels: ['intercom', 'bug', 'customer-support', `severity-${bugDetection.severity}`],
+      priority: context.customerImpact
+    };
+  };
+
+  // Handle enhanced issue submission
+  const handleEnhancedSubmit = async (context: EnhancedIssueContext) => {
+    if (!conversationQuery.data || !bugDetectionQuery.data) return;
+
+    setEnhancedContext(context);
+
+    if (mcp.isInitialized) {
+      try {
+        const template = generateInitialTemplate(conversationQuery.data, bugDetectionQuery.data, context);
+        const result = await mcp.analyzeForDuplicates(
+          conversationQuery.data,
+          template,
+          context
+        );
+        
+        setMCPAnalysisResult(result);
+        setCurrentStep('ai-analysis');
+      } catch (error) {
+        console.error('MCP analysis failed:', error);
+        toast({
+          title: "AI Analysis Failed",
+          description: "Proceeding with direct issue creation. " + (error instanceof Error ? error.message : "Unknown error"),
+          variant: "destructive",
+        });
+        // Fallback to direct issue creation
+        proceedWithIssueCreation(context);
+      }
+    } else {
+      // No MCP configured, proceed directly
+      proceedWithIssueCreation(context);
+    }
+  };
+
+  // Proceed with issue creation
+  const proceedWithIssueCreation = async (context: EnhancedIssueContext) => {
+    if (!conversationQuery.data || !bugDetectionQuery.data) return;
+
+    const template = generateInitialTemplate(conversationQuery.data, bugDetectionQuery.data, context);
+    await handleCreateIssue({
+      title: template.title,
+      body: template.body,
+      labels: template.labels
+    });
+  };
 
   // Handle GitHub issue creation
   const handleCreateIssue = async (issueData: { title: string; body: string; labels: string[] }) => {
@@ -159,11 +277,45 @@ const Index = () => {
     }
   };
 
+  // Handle AI analysis actions
+  const handleAIAnalysisAction = (action: string, issueId?: number) => {
+    switch (action) {
+      case 'back':
+        setCurrentStep('enhancement');
+        setMCPAnalysisResult(null);
+        break;
+      case 'create_new':
+        if (enhancedContext) {
+          proceedWithIssueCreation(enhancedContext);
+        }
+        break;
+      case 'reference':
+        toast({
+          title: "Reference Issue",
+          description: `You can reference issue #${issueId} in your new issue.`,
+        });
+        if (enhancedContext) {
+          proceedWithIssueCreation(enhancedContext);
+        }
+        break;
+      case 'merge':
+        toast({
+          title: "Merge with Existing",
+          description: `Consider updating issue #${issueId} instead of creating a new one.`,
+        });
+        break;
+      default:
+        console.log('Unknown action:', action);
+    }
+  };
+
   // Reset workflow (don't clear conversationId immediately to preserve cache)
   const handleReset = () => {
     setCurrentStep('input');
     setCurrentUrl('');
     setCreatedIssue(null);
+    setMCPAnalysisResult(null);
+    setEnhancedContext(null);
     createIssueMutation.reset();
     // Note: We don't clear conversationId to preserve cache
   };
@@ -174,6 +326,8 @@ const Index = () => {
     setCurrentUrl('');
     setConversationId(null);
     setCreatedIssue(null);
+    setMCPAnalysisResult(null);
+    setEnhancedContext(null);
     createIssueMutation.reset();
   };
 
@@ -237,6 +391,39 @@ const Index = () => {
     );
   }
 
+  // Show MCP Configuration
+  if (showMCPConfig) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-6 py-8 max-w-4xl">
+          <div className="space-y-8">
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-2xl font-bold">AI Duplicate Detection Setup</h1>
+                <p className="text-gray-600">Configure AI-powered duplicate issue detection</p>
+              </div>
+              <Button
+                variant="outline"
+                onClick={() => setShowMCPConfig(false)}
+              >
+                Skip for now
+              </Button>
+            </div>
+            
+                    <MCPConfiguration
+          onConfigured={handleMCPConfigured}
+          loading={mcp.loading}
+          error={mcp.error}
+          initProgress={mcp.initProgress}
+          testGitHubSearch={mcp.isInitialized ? mcp.testGitHubSearch : undefined}
+        />
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   const hasConversation = conversationQuery.data !== undefined;
 
   return (
@@ -244,12 +431,35 @@ const Index = () => {
       <Header />
       
       <main className="container mx-auto px-6 py-8 max-w-4xl">
+                    {/* MCP Status and Configuration */}
+                    <div className="justify-center py-4 flex items-center gap-2">
+              {mcp.isInitialized ? (
+                <Badge variant="default" className="bg-green-100 text-green-800">
+                  <Brain className="w-3 h-3 mr-1" />
+                  AI Detection Active
+                </Badge>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowMCPConfig(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Settings className="w-4 h-4" />
+                  Setup AI Detection
+                </Button>
+              )}
+            </div>
         <div className="space-y-8">
           {/* Input Section - Always visible */}
-          <ConversationInput
-            onAnalyze={handleAnalyzeConversation}
-            isLoading={conversationQuery.isFetching}
-          />
+          <div className="flex justify-between items-start">
+            <ConversationInput
+              onAnalyze={handleAnalyzeConversation}
+              isLoading={conversationQuery.isFetching}
+            />
+            
+
+          </div>
 
           {/* Cache Status Indicator */}
           {conversationId && cacheStatus.hasCache && (
@@ -418,7 +628,18 @@ const Index = () => {
                     loginCredentials: ""
                   }}
                   onGenerate={handleCreateIssue}
+                  onEnhancedSubmit={handleEnhancedSubmit}
                   bugDetectionResult={bugDetectionQuery.data}
+                  mcpEnabled={mcp.isInitialized}
+                />
+              )}
+
+              {/* AI Duplicate Analysis */}
+              {currentStep === 'ai-analysis' && mcpAnalysisResult && (
+                <AIDuplicateAnalysis
+                  analysisResult={mcpAnalysisResult}
+                  onSelectAction={handleAIAnalysisAction}
+                  loading={mcp.loading}
                 />
               )}
 

@@ -7,9 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Copy, Check, FileText, Upload, X, Search, Users } from "lucide-react";
+import { Copy, Check, FileText, Upload, X, Search, Users, Brain, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { BugDetectionResult } from "@/services/llmApi";
+import type { EnhancedIssueContext } from "@/types/conversation";
 
 interface IssueTemplateProps {
   initialTemplate: {
@@ -31,13 +32,33 @@ interface IssueTemplateProps {
     loginCredentials: string;
   };
   onGenerate: (issueData: { title: string; body: string; labels: string[] }) => void;
+  onEnhancedSubmit?: (context: EnhancedIssueContext) => void;
   bugDetectionResult?: BugDetectionResult;
+  mcpEnabled?: boolean;
 }
 
-const IssueTemplate = ({ initialTemplate, onGenerate, bugDetectionResult }: IssueTemplateProps) => {
+const IssueTemplate = ({ 
+  initialTemplate, 
+  onGenerate, 
+  onEnhancedSubmit,
+  bugDetectionResult,
+  mcpEnabled = false 
+}: IssueTemplateProps) => {
   const [template, setTemplate] = useState(initialTemplate);
   const [screenshots, setScreenshots] = useState<File[]>([]);
   const [copied, setCopied] = useState(false);
+  
+  // Enhanced context for MCP
+  const [enhancedContext, setEnhancedContext] = useState<EnhancedIssueContext>({
+    screenshots: [],
+    additionalSteps: '',
+    technicalDetails: '',
+    errorMessages: '',
+    browserInfo: '',
+    appId: '',
+    customerImpact: 'medium'
+  });
+  
   const { toast } = useToast();
 
   const generateMarkdown = () => {
@@ -155,6 +176,37 @@ ${template.loginCredentials}`;
     }));
   };
 
+  const handleEnhancedSubmit = () => {
+    if (!onEnhancedSubmit) return;
+    
+    // Update enhanced context with current template data
+    const updatedContext: EnhancedIssueContext = {
+      ...enhancedContext,
+      appId: template.appId,
+      errorMessages: template.errorMessage,
+      browserInfo: `${template.browser} on ${template.operatingSystem}`,
+      additionalSteps: template.reproductionSteps.join('\n'),
+      technicalDetails: `Device: ${template.device}\nBrowser: ${template.browser}\nOS: ${template.operatingSystem}`,
+    };
+    
+    onEnhancedSubmit(updatedContext);
+  };
+
+  const handleDirectCreate = () => {
+    const issueTitle = bugDetectionResult?.initialAnalysis.title || 
+                      template.description.split('\n')[0].substring(0, 100) || 
+                      'Issue from Intercom conversation';
+    const labels = ['intercom', 'bug', 'customer-support'];
+    if (bugDetectionResult?.severity) {
+      labels.push(`severity-${bugDetectionResult.severity}`);
+    }
+    onGenerate({ 
+      title: issueTitle, 
+      body: generateMarkdown(), 
+      labels 
+    });
+  };
+
   return (
     <Card className="w-full animate-fade-in">
       <CardHeader>
@@ -199,7 +251,10 @@ ${template.loginCredentials}`;
                 <Input
                   id="appId"
                   value={template.appId}
-                  onChange={(e) => setTemplate(prev => ({ ...prev, appId: e.target.value }))}
+                  onChange={(e) => {
+                    setTemplate(prev => ({ ...prev, appId: e.target.value }));
+                    setEnhancedContext(prev => ({ ...prev, appId: e.target.value }));
+                  }}
                   placeholder="Please provide the App ID (numbers), not the code"
                   required
                 />
@@ -211,7 +266,10 @@ ${template.loginCredentials}`;
                 <Textarea
                   id="errorMessage"
                   value={template.errorMessage}
-                  onChange={(e) => setTemplate(prev => ({ ...prev, errorMessage: e.target.value }))}
+                  onChange={(e) => {
+                    setTemplate(prev => ({ ...prev, errorMessage: e.target.value }));
+                    setEnhancedContext(prev => ({ ...prev, errorMessages: e.target.value }));
+                  }}
                   placeholder="Please write the full error message received by the customer. If there is no error message, write 'N/A'"
                   rows={3}
                   className="resize-none"
@@ -259,7 +317,10 @@ ${template.loginCredentials}`;
                 <Input
                   id="browser"
                   value={template.browser}
-                  onChange={(e) => setTemplate(prev => ({ ...prev, browser: e.target.value }))}
+                  onChange={(e) => {
+                    setTemplate(prev => ({ ...prev, browser: e.target.value }));
+                    setEnhancedContext(prev => ({ ...prev, browserInfo: `${e.target.value} on ${template.operatingSystem}` }));
+                  }}
                   placeholder="e.g., Chrome 120.0.6099.129, Safari 17.1"
                 />
               </div>
@@ -270,11 +331,53 @@ ${template.loginCredentials}`;
                 <Input
                   id="operatingSystem"
                   value={template.operatingSystem}
-                  onChange={(e) => setTemplate(prev => ({ ...prev, operatingSystem: e.target.value }))}
+                  onChange={(e) => {
+                    setTemplate(prev => ({ ...prev, operatingSystem: e.target.value }));
+                    setEnhancedContext(prev => ({ ...prev, browserInfo: `${template.browser} on ${e.target.value}` }));
+                  }}
                   placeholder="e.g., macOS 14.1, Windows 11, iOS 17.1"
                 />
               </div>
             </div>
+
+            {/* Enhanced Context for MCP */}
+            {mcpEnabled && (
+              <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <Brain className="w-4 h-4 text-blue-600" />
+                  <h3 className="text-sm font-medium text-blue-900">AI Duplicate Detection Context</h3>
+                </div>
+                
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium text-blue-800">Customer Impact</Label>
+                    <select
+                      value={enhancedContext.customerImpact}
+                      onChange={(e) => setEnhancedContext(prev => ({ 
+                        ...prev, 
+                        customerImpact: e.target.value as 'low' | 'medium' | 'high' 
+                      }))}
+                      className="w-full px-2 py-1 text-xs border border-blue-300 rounded"
+                    >
+                      <option value="low">Low Impact</option>
+                      <option value="medium">Medium Impact</option>
+                      <option value="high">High Impact</option>
+                    </select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium text-blue-800">Additional Technical Details</Label>
+                    <Textarea
+                      value={enhancedContext.technicalDetails}
+                      onChange={(e) => setEnhancedContext(prev => ({ ...prev, technicalDetails: e.target.value }))}
+                      placeholder="Any additional technical context for better duplicate detection..."
+                      rows={2}
+                      className="text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Evidence */}
             <div className="space-y-4">
@@ -443,27 +546,34 @@ ${template.loginCredentials}`;
           </TabsContent>
         </Tabs>
 
-        <div className="flex justify-end mt-6">
-          <Button 
-            onClick={() => {
-              const issueTitle = bugDetectionResult?.initialAnalysis.title || 
-                              template.description.split('\n')[0].substring(0, 100) || 
-                              'Issue from Intercom conversation';
-              const labels = ['intercom', 'bug', 'customer-support'];
-              if (bugDetectionResult?.severity) {
-                labels.push(`severity-${bugDetectionResult.severity}`);
-              }
-              onGenerate({ 
-                title: issueTitle, 
-                body: generateMarkdown(), 
-                labels 
-              });
-            }}
-            className="px-6"
-            disabled={!template.description.trim() || !template.appId.trim()}
-          >
-            Create GitHub Issue
-          </Button>
+        <div className="flex justify-end gap-3 mt-6">
+          {mcpEnabled && onEnhancedSubmit ? (
+            <>
+              <Button
+                variant="outline"
+                onClick={handleDirectCreate}
+                disabled={!template.description.trim() || !template.appId.trim()}
+              >
+                Skip AI Analysis
+              </Button>
+              <Button 
+                onClick={handleEnhancedSubmit}
+                className="px-6 bg-blue-600 hover:bg-blue-700"
+                disabled={!template.description.trim() || !template.appId.trim()}
+              >
+                <Brain className="w-4 h-4 mr-2" />
+                Analyze for Duplicates
+              </Button>
+            </>
+          ) : (
+            <Button 
+              onClick={handleDirectCreate}
+              className="px-6"
+              disabled={!template.description.trim() || !template.appId.trim()}
+            >
+              Create GitHub Issue
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
